@@ -11041,21 +11041,6 @@ function isModifiedEvent(event) {
 function shouldProcessLinkClick(event, target) {
 	return event.button === 0 && (!target || target === "_self") && !isModifiedEvent(event);
 }
-function createSearchParams(init = "") {
-	return new URLSearchParams(typeof init === "string" || Array.isArray(init) || init instanceof URLSearchParams ? init : Object.keys(init).reduce((memo2, key) => {
-		let value = init[key];
-		return memo2.concat(Array.isArray(value) ? value.map((v) => [key, v]) : [[key, value]]);
-	}, []));
-}
-function getSearchParamsForLocation(locationSearch, defaultSearchParams) {
-	let searchParams = createSearchParams(locationSearch);
-	if (defaultSearchParams) defaultSearchParams.forEach((_, key) => {
-		if (!searchParams.has(key)) defaultSearchParams.getAll(key).forEach((value) => {
-			searchParams.append(key, value);
-		});
-	});
-	return searchParams;
-}
 var _formDataSupportsSubmitter = null;
 function isFormDataSubmitterSupported() {
 	if (_formDataSupportsSubmitter === null) try {
@@ -11734,19 +11719,6 @@ function useLinkClickHandler(to, { target, replace: replaceProp, mask, state, pr
 		defaultShouldRevalidate,
 		useTransitions
 	]);
-}
-function useSearchParams(defaultInit) {
-	warning(typeof URLSearchParams !== "undefined", `You cannot use the \`useSearchParams\` hook in a browser that does not support the URLSearchParams API. If you need to support Internet Explorer 11, we recommend you load a polyfill such as https://github.com/ungap/url-search-params.`);
-	let defaultSearchParamsRef = import_react.useRef(createSearchParams(defaultInit));
-	let hasSetSearchParamsRef = import_react.useRef(false);
-	let location = useLocation();
-	let searchParams = import_react.useMemo(() => getSearchParamsForLocation(location.search, hasSetSearchParamsRef.current ? null : defaultSearchParamsRef.current), [location.search]);
-	let navigate = useNavigate();
-	return [searchParams, import_react.useCallback((nextInit, navigateOptions) => {
-		const newSearchParams = createSearchParams(typeof nextInit === "function" ? nextInit(new URLSearchParams(searchParams)) : nextInit);
-		hasSetSearchParamsRef.current = true;
-		navigate("?" + newSearchParams, navigateOptions);
-	}, [navigate, searchParams])];
 }
 var fetcherId = 0;
 var getUniqueFetcherId = () => `__${String(++fetcherId)}__`;
@@ -13238,10 +13210,7 @@ var PageWrapper = styled.div`
 `;
 //#endregion
 //#region src/components/common/StepFunnel/FunnelContext.tsx
-var FunnelContext = (0, import_react.createContext)({
-	currentStep: 0,
-	goToStep: () => {}
-});
+var FunnelContext = (0, import_react.createContext)(null);
 //#endregion
 //#region src/components/common/StepFunnel/useFunnelContext.ts
 var useFunnelContext = () => {
@@ -13355,89 +13324,6 @@ var StepFunnel = (t0) => {
 	return t3;
 };
 StepFunnel.Step = Step;
-//#endregion
-//#region src/hooks/useFormWrapper/FormWrapperContext.ts
-var FormWrapperContext = (0, import_react.createContext)(null);
-//#endregion
-//#region src/hooks/useFormWrapper/FormWrapperImpl.tsx
-var FormWrapperImpl = (t0) => {
-	const $ = (0, import_compiler_runtime.c)(8);
-	const { defaultValues, children } = t0;
-	const [formState, setFormState] = (0, import_react.useState)(defaultValues);
-	let t1;
-	if ($[0] !== formState) {
-		t1 = (key) => formState[key];
-		$[0] = formState;
-		$[1] = t1;
-	} else t1 = $[1];
-	let t2;
-	if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
-		t2 = (key_0, value) => {
-			setFormState((prev) => ({
-				...prev,
-				[key_0]: value
-			}));
-		};
-		$[2] = t2;
-	} else t2 = $[2];
-	let t3;
-	if ($[3] !== t1) {
-		t3 = {
-			getValue: t1,
-			setValue: t2
-		};
-		$[3] = t1;
-		$[4] = t3;
-	} else t3 = $[4];
-	const t4 = t3;
-	let t5;
-	if ($[5] !== children || $[6] !== t4) {
-		t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FormWrapperContext.Provider, {
-			value: t4,
-			children
-		});
-		$[5] = children;
-		$[6] = t4;
-		$[7] = t5;
-	} else t5 = $[7];
-	return t5;
-};
-//#endregion
-//#region src/hooks/useFormWrapper/useFormWrapper.tsx
-var useFormWrapper = (t0) => {
-	const $ = (0, import_compiler_runtime.c)(4);
-	const { defaultValues } = t0;
-	let t1;
-	if ($[0] !== defaultValues) {
-		t1 = () => {
-			const initialValues = defaultValues;
-			return (t2) => {
-				const { children } = t2;
-				return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FormWrapperImpl, {
-					defaultValues: initialValues,
-					children
-				});
-			};
-		};
-		$[0] = defaultValues;
-		$[1] = t1;
-	} else t1 = $[1];
-	const [FormWrapper] = (0, import_react.useState)(t1);
-	let t2;
-	if ($[2] !== FormWrapper) {
-		t2 = { FormWrapper };
-		$[2] = FormWrapper;
-		$[3] = t2;
-	} else t2 = $[3];
-	return t2;
-};
-//#endregion
-//#region src/hooks/useFormWrapper/useFormValue.ts
-var useFormValue = () => {
-	const context = (0, import_react.useContext)(FormWrapperContext);
-	if (!context) throw new Error("useFormValue는 FormWrapper 내부에서만 사용할 수 있습니다.");
-	return context;
-};
 //#endregion
 //#region src/styles/colorPalette.ts
 var COLOR_PALETTE = {
@@ -13745,14 +13631,13 @@ var SelectedOption = styled.span``;
 var Placeholder = styled.span`
   color: ${COLOR_PALETTE.GRAY};
 `;
-var OptionList = styled.ul`
+var OptionList = styled.div`
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
   margin: 0;
   padding: 0;
-  list-style: none;
   border: 1px solid ${COLOR_PALETTE.GRAY};
   border-radius: 2px;
   background-color: ${COLOR_PALETTE.WHITE};
@@ -13936,6 +13821,69 @@ var CARD = {
 		]
 	}
 };
+//#endregion
+//#region src/hooks/useFormWrapper/createFormContext.tsx
+var createFormContext = () => {
+	const FormContext = (0, import_react.createContext)(null);
+	const FormWrapper = (t0) => {
+		const $ = (0, import_compiler_runtime.c)(10);
+		const { defaultValues, children } = t0;
+		let t1;
+		if ($[0] !== defaultValues) {
+			t1 = () => defaultValues;
+			$[0] = defaultValues;
+			$[1] = t1;
+		} else t1 = $[1];
+		const [formState, setFormState] = (0, import_react.useState)(t1);
+		let t2;
+		if ($[2] !== formState) {
+			t2 = (key) => formState[key];
+			$[2] = formState;
+			$[3] = t2;
+		} else t2 = $[3];
+		let t3;
+		if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
+			t3 = (key_0, value) => setFormState((prev) => ({
+				...prev,
+				[key_0]: value
+			}));
+			$[4] = t3;
+		} else t3 = $[4];
+		let t4;
+		if ($[5] !== t2) {
+			t4 = {
+				getValue: t2,
+				setValue: t3
+			};
+			$[5] = t2;
+			$[6] = t4;
+		} else t4 = $[6];
+		const contextValue = t4;
+		let t5;
+		if ($[7] !== children || $[8] !== contextValue) {
+			t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FormContext.Provider, {
+				value: contextValue,
+				children
+			});
+			$[7] = children;
+			$[8] = contextValue;
+			$[9] = t5;
+		} else t5 = $[9];
+		return t5;
+	};
+	const useFormValue = () => {
+		const context = (0, import_react.useContext)(FormContext);
+		if (!context) throw new Error("useFormValue는 FormWrapper 내부에서만 사용할 수 있습니다.");
+		return context;
+	};
+	return {
+		FormWrapper,
+		useFormValue
+	};
+};
+//#endregion
+//#region src/components/feature/CardInfoFormSection/formContext.ts
+var { FormWrapper, useFormValue } = createFormContext();
 //#endregion
 //#region src/components/feature/CardInfoFormSection/components/CardCompanySelectField/CardCompanySelectField.tsx
 var CardCompanySelectField = (t0) => {
@@ -14137,6 +14085,8 @@ var validateMonthRange = (month) => {
 var validateYearRange = (year) => {
 	return validateRange(year, parseInt(`${(/* @__PURE__ */ new Date()).getFullYear()}`.slice(2)), Infinity);
 };
+//#endregion
+//#region src/components/feature/CardInfoFormSection/components/CardCVCInputField/utils.ts
 var validateCVCRange = (CVC) => {
 	return validateRange(CVC, 0, 999);
 };
@@ -14144,7 +14094,7 @@ var validateCVCRange = (CVC) => {
 //#region src/components/feature/CardInfoFormSection/components/CardCVCInputField/CardCVCInputField.tsx
 var CVC_MAX_LENGTH = 3;
 var CardCVCInputField = (t0) => {
-	const $ = (0, import_compiler_runtime.c)(17);
+	const $ = (0, import_compiler_runtime.c)(14);
 	const { onComplete } = t0;
 	const { getValue, setValue } = useFormValue();
 	let t1;
@@ -14154,81 +14104,74 @@ var CardCVCInputField = (t0) => {
 		$[1] = t1;
 	} else t1 = $[1];
 	const CVC = t1;
+	const status = getValue("CVCStatus");
 	let t2;
-	if ($[2] !== getValue) {
-		t2 = getValue("CVCStatus");
-		$[2] = getValue;
-		$[3] = t2;
-	} else t2 = $[3];
-	const status = t2;
-	let t3;
-	if ($[4] !== onComplete || $[5] !== setValue || $[6] !== status) {
-		t3 = (input) => {
-			if (input.length !== 0) {
-				if (!checkIsInt(+input) || !validateCVCRange(+input)) return setValue("CVCStatus", "error");
-			}
-			setValue("CVCStatus", "default");
+	if ($[2] !== onComplete || $[3] !== setValue) {
+		t2 = (input) => {
+			const isInvalid = input.length !== 0 && (!checkIsInt(+input) || !validateCVCRange(+input));
+			const isComplete = input.length === CVC_MAX_LENGTH;
+			const nextStatus = isInvalid ? "ERROR" : isComplete ? "SUCCESS" : "DEFAULT";
+			setValue("CVCStatus", nextStatus);
 			setValue("CVC", input.slice(0, CVC_MAX_LENGTH));
-			if (input.length === CVC_MAX_LENGTH && status !== "error") onComplete?.();
+			if (isComplete && nextStatus === "SUCCESS") onComplete?.();
 		};
-		$[4] = onComplete;
-		$[5] = setValue;
-		$[6] = status;
-		$[7] = t3;
-	} else t3 = $[7];
-	const handleCVCChange = t3;
-	const t4 = status === "error" ? "숫자만 입력 가능합니다." : "";
-	let t5;
-	if ($[8] !== handleCVCChange) {
-		t5 = (e) => {
+		$[2] = onComplete;
+		$[3] = setValue;
+		$[4] = t2;
+	} else t2 = $[4];
+	const handleCVCChange = t2;
+	const t3 = status === "ERROR" ? "숫자만 입력 가능합니다." : "";
+	let t4;
+	if ($[5] !== handleCVCChange) {
+		t4 = (e) => {
 			const input_0 = e.target.value;
 			handleCVCChange(input_0);
 		};
-		$[8] = handleCVCChange;
-		$[9] = t5;
-	} else t5 = $[9];
+		$[5] = handleCVCChange;
+		$[6] = t4;
+	} else t4 = $[6];
+	const t5 = status === "ERROR" ? "error" : "default";
 	let t6;
-	if ($[10] !== CVC || $[11] !== status || $[12] !== t5) {
+	if ($[7] !== CVC || $[8] !== t4 || $[9] !== t5) {
 		t6 = [{
 			key: "cvc",
 			placeholder: "123",
 			maxLength: CVC_MAX_LENGTH,
 			fullWidth: true,
 			value: CVC,
-			onChange: t5,
-			state: status,
+			onChange: t4,
+			state: t5,
 			autoFocus: true
 		}];
-		$[10] = CVC;
-		$[11] = status;
-		$[12] = t5;
-		$[13] = t6;
-	} else t6 = $[13];
+		$[7] = CVC;
+		$[8] = t4;
+		$[9] = t5;
+		$[10] = t6;
+	} else t6 = $[10];
 	let t7;
-	if ($[14] !== t4 || $[15] !== t6) {
+	if ($[11] !== t3 || $[12] !== t6) {
 		t7 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(InputField, {
 			title: "CVC 번호를 입력해 주세요",
 			label: "CVC",
-			helperMessage: t4,
+			helperMessage: t3,
 			inputPropsList: t6
 		});
-		$[14] = t4;
-		$[15] = t6;
-		$[16] = t7;
-	} else t7 = $[16];
+		$[11] = t3;
+		$[12] = t6;
+		$[13] = t7;
+	} else t7 = $[13];
 	return t7;
 };
 //#endregion
 //#region src/components/common/Button/Button.tsx
 var Button = styled.button`
-  width: ${(props) => props.fullWidth && "100%"};
+  width: ${(props) => props.fullWidth ? "100%" : "auto"};
   padding: 1.2rem 2.4rem;
   background-color: ${({ disabled }) => disabled ? COLOR_PALETTE.GRAY : COLOR_PALETTE["BLACK-800"]};
   color: ${COLOR_PALETTE.WHITE};
   border-radius: ${({ rounded }) => rounded ? "5px" : "0"};
   border: none;
   font-weight: 700;
-  font-style: Bold;
   font-size: 1rem;
   cursor: ${({ disabled }) => disabled ? "not-allowed" : "pointer"};
 `;
@@ -14244,7 +14187,7 @@ var CardInfoFormSubmitButton = () => {
 			const validityPeriodStatus = getValue("validityPeriodStatus");
 			const CVCStatus = getValue("CVCStatus");
 			const passwordStatus = getValue("passwordStatus");
-			return !(getValue("selectedCardCompany") && cardNumberStatus.every(_temp$4) && validityPeriodStatus.month === "DEFAULT" && validityPeriodStatus.year === "DEFAULT" && CVCStatus === "default" && passwordStatus === "default");
+			return !(getValue("selectedCardCompany") && cardNumberStatus.every(_temp$4) && validityPeriodStatus.month === "SUCCESS" && validityPeriodStatus.year === "SUCCESS" && CVCStatus === "SUCCESS" && passwordStatus === "SUCCESS");
 		};
 		$[0] = getValue;
 		$[1] = t0;
@@ -14428,7 +14371,7 @@ var CardNumberInputField = (t0) => {
 	const brand = detectCardBrand(cardNumber);
 	const handleCardNumberBlur = (index, input) => {
 		const cardNumberInputStatus = checkCardNumberInputStatus$1(input, getCardNumberUnitMaxLengthByBrand(brand, index));
-		setValue("cardNumberStatus", updateArray(status, index, cardNumberInputStatus === "DEFAULT" ? "EMPTY" : cardNumberInputStatus));
+		setValue("cardNumberStatus", updateArray(status, index, cardNumberInputStatus === "DEFAULT" ? "INCOMPLETE" : cardNumberInputStatus));
 	};
 	const handleCardNumberChange = (index_0, input_0) => {
 		const unitMaxLength = getCardNumberUnitMaxLengthByBrand(brand, index_0);
@@ -14485,10 +14428,15 @@ function _temp$2(s) {
 	return s !== "DEFAULT";
 }
 //#endregion
+//#region src/components/feature/CardInfoFormSection/components/CardPasswordField/utils.ts
+var validatePasswordRange = (password) => {
+	return validateRange(password, 0, 99);
+};
+//#endregion
 //#region src/components/feature/CardInfoFormSection/components/CardPasswordField/CardPasswordField.tsx
 var PASSWORD_MAX_LENGTH = 2;
 var CardPasswordField = (t0) => {
-	const $ = (0, import_compiler_runtime.c)(17);
+	const $ = (0, import_compiler_runtime.c)(14);
 	const { onComplete } = t0;
 	const { getValue, setValue } = useFormValue();
 	let t1;
@@ -14498,41 +14446,38 @@ var CardPasswordField = (t0) => {
 		$[1] = t1;
 	} else t1 = $[1];
 	const password = t1;
+	const status = getValue("passwordStatus");
 	let t2;
-	if ($[2] !== getValue) {
-		t2 = getValue("passwordStatus");
-		$[2] = getValue;
-		$[3] = t2;
-	} else t2 = $[3];
-	const status = t2;
-	let t3;
-	if ($[4] !== onComplete || $[5] !== setValue || $[6] !== status) {
-		t3 = (input) => {
-			if (input.length !== 0) {
-				if (!checkIsInt(+input) || !validateCVCRange(+input)) return setValue("passwordStatus", "error");
+	if ($[2] !== onComplete || $[3] !== setValue) {
+		t2 = (input) => {
+			const sliced = input.slice(0, PASSWORD_MAX_LENGTH);
+			if (sliced.length !== 0 && (!checkIsInt(+sliced) || !validatePasswordRange(+sliced))) {
+				setValue("passwordStatus", "ERROR");
+				return;
 			}
-			setValue("passwordStatus", "default");
-			setValue("password", input.slice(0, PASSWORD_MAX_LENGTH));
-			if (input.length === PASSWORD_MAX_LENGTH && status !== "error") onComplete?.();
+			const isComplete = sliced.length === PASSWORD_MAX_LENGTH;
+			setValue("passwordStatus", isComplete ? "SUCCESS" : "DEFAULT");
+			setValue("password", sliced);
+			if (isComplete) onComplete?.();
 		};
-		$[4] = onComplete;
-		$[5] = setValue;
-		$[6] = status;
-		$[7] = t3;
-	} else t3 = $[7];
-	const handlePasswordChange = t3;
-	const t4 = status === "error" ? "숫자만 입력 가능합니다." : "";
-	let t5;
-	if ($[8] !== handlePasswordChange) {
-		t5 = (e) => {
+		$[2] = onComplete;
+		$[3] = setValue;
+		$[4] = t2;
+	} else t2 = $[4];
+	const handlePasswordChange = t2;
+	const t3 = status === "ERROR" ? "숫자만 입력 가능합니다." : "";
+	let t4;
+	if ($[5] !== handlePasswordChange) {
+		t4 = (e) => {
 			const input_0 = e.target.value;
 			handlePasswordChange(input_0);
 		};
-		$[8] = handlePasswordChange;
-		$[9] = t5;
-	} else t5 = $[9];
+		$[5] = handlePasswordChange;
+		$[6] = t4;
+	} else t4 = $[6];
+	const t5 = status === "ERROR" ? "error" : "default";
 	let t6;
-	if ($[10] !== password || $[11] !== status || $[12] !== t5) {
+	if ($[7] !== password || $[8] !== t4 || $[9] !== t5) {
 		t6 = [{
 			key: "password",
 			placeholder: "**",
@@ -14540,28 +14485,28 @@ var CardPasswordField = (t0) => {
 			type: "password",
 			fullWidth: true,
 			value: password,
-			onChange: t5,
-			state: status,
+			onChange: t4,
+			state: t5,
 			autoFocus: true
 		}];
-		$[10] = password;
-		$[11] = status;
-		$[12] = t5;
-		$[13] = t6;
-	} else t6 = $[13];
+		$[7] = password;
+		$[8] = t4;
+		$[9] = t5;
+		$[10] = t6;
+	} else t6 = $[10];
 	let t7;
-	if ($[14] !== t4 || $[15] !== t6) {
+	if ($[11] !== t3 || $[12] !== t6) {
 		t7 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(InputField, {
 			title: "비밀번호를 입력해 주세요",
 			caption: "앞의 2자리를 입력해주세요",
 			label: "비밀번호 앞 2자리",
-			helperMessage: t4,
+			helperMessage: t3,
 			inputPropsList: t6
 		});
-		$[14] = t4;
-		$[15] = t6;
-		$[16] = t7;
-	} else t7 = $[16];
+		$[11] = t3;
+		$[12] = t6;
+		$[13] = t7;
+	} else t7 = $[13];
 	return t7;
 };
 //#endregion
@@ -14707,7 +14652,7 @@ var Card = (t0) => {
 var Wrapper$2 = styled.div`
   width: 13rem;
   height: 8rem;
-  background-color: ${({ company }) => company ? COLOR_PALETTE[company.toUpperCase()] : COLOR_PALETTE["BLACK-800"]};
+  background-color: ${({ company }) => (company ? COLOR_PALETTE[company.toUpperCase()] : void 0) ?? COLOR_PALETTE["BLACK-800"]};
   border-radius: 0.25rem;
   box-shadow: 3px 3px 5px 0px ${COLOR_PALETTE["BLACK-900"]}40;
 `;
@@ -14809,6 +14754,7 @@ var Wrapper$1 = styled.div`
 //#region src/components/feature/CardInfoFormSection/components/CardValidityPeriodInputField/errorMessage.ts
 var ERROR_MESSAGE = {
 	DEFAULT: "",
+	SUCCESS: "",
 	ONLY_NUMBER: "숫자만 입력 가능합니다.",
 	MONTH_RANGE_ERROR: "올바른 입력범위가 아닙니다. 1월부터 12월 사이여야 합니다.",
 	YEAR_RANGE_ERROR: "올바른 입력범위가 아닙니다. 00부터 99 사이여야 합니다.",
@@ -14821,11 +14767,13 @@ var checkCardNumberInputStatus = (key, value) => {
 	if (key === "month") {
 		if (value.length === 0) return "DEFAULT";
 		if (value.length === 2 && !validateMonthRange(+value)) return "MONTH_RANGE_ERROR";
+		if (value.length === 2 && validateMonthRange(+value)) return "SUCCESS";
 		return "DEFAULT";
 	}
 	if (key === "year") {
 		if (value.length === 0) return "DEFAULT";
 		if (value.length === 2 && !validateYearRange(+value)) return "YEAR_RANGE_ERROR";
+		if (value.length === 2 && validateYearRange(+value)) return "SUCCESS";
 		return "DEFAULT";
 	}
 	return "DEFAULT";
@@ -14862,7 +14810,7 @@ var CardValidityPeriodInputField = (t0) => {
 				...status,
 				[key]: state
 			});
-			if (state !== "DEFAULT") return;
+			if (state !== "DEFAULT" && state !== "SUCCESS") return;
 			const formattedValue = formatValidityPeriod(value);
 			const next = {
 				...validityPeriod,
@@ -14894,7 +14842,7 @@ var CardValidityPeriodInputField = (t0) => {
 				...status,
 				[key_0]: state_0
 			});
-			if (state_0 !== "DEFAULT") return;
+			if (state_0 !== "DEFAULT" && state_0 !== "SUCCESS") return;
 			setValue("validityPeriod", {
 				...validityPeriod,
 				[key_0]: padded
@@ -14924,7 +14872,7 @@ var CardValidityPeriodInputField = (t0) => {
 		$[18] = handleValidityPeriodBlur;
 		$[19] = t7;
 	} else t7 = $[19];
-	const t8 = status.month === "DEFAULT" ? "default" : "error";
+	const t8 = status.month === "DEFAULT" || status.month === "SUCCESS" ? "default" : "error";
 	let t9;
 	if ($[20] !== t5 || $[21] !== t6 || $[22] !== t7 || $[23] !== t8 || $[24] !== validityPeriod.month) {
 		t9 = {
@@ -14964,7 +14912,7 @@ var CardValidityPeriodInputField = (t0) => {
 		$[30] = handleValidityPeriodBlur;
 		$[31] = t12;
 	} else t12 = $[31];
-	const t13 = status.year === "DEFAULT" ? "default" : "error";
+	const t13 = status.year === "DEFAULT" || status.year === "SUCCESS" ? "default" : "error";
 	let t14;
 	if ($[32] !== t10 || $[33] !== t11 || $[34] !== t12 || $[35] !== t13 || $[36] !== validityPeriod.year) {
 		t14 = {
@@ -15034,44 +14982,36 @@ var INITIAL_CARD_INFO_FORM_STATE = {
 		month: "DEFAULT",
 		year: "DEFAULT"
 	},
-	CVCStatus: "default",
-	passwordStatus: "default"
+	CVCStatus: "DEFAULT",
+	passwordStatus: "DEFAULT"
 };
 //#endregion
 //#region src/components/feature/CardInfoFormSection/CardInfoFormSection.tsx
 var CardInfoFormSection = () => {
-	const $ = (0, import_compiler_runtime.c)(10);
-	let t0;
-	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-		t0 = { defaultValues: INITIAL_CARD_INFO_FORM_STATE };
-		$[0] = t0;
-	} else t0 = $[0];
-	const { FormWrapper } = useFormWrapper(t0);
+	const $ = (0, import_compiler_runtime.c)(6);
 	const navigate = useNavigate();
-	let t1;
-	if ($[1] !== navigate) {
-		t1 = (event) => {
+	let t0;
+	if ($[0] !== navigate) {
+		t0 = (event) => {
 			event.preventDefault();
 			const formData = new FormData(event.currentTarget);
-			const cardNumber = formData.getAll("card-number").join("");
-			const cardCompany = (formData.get("card-company") ?? "").toString();
-			navigate(`/complete?${new URLSearchParams({
-				"card-number": cardNumber,
-				"card-company": cardCompany
-			}).toString()}`);
+			navigate("/complete", { state: {
+				cardNumber: formData.getAll("card-number").join(""),
+				cardCompany: (formData.get("card-company") ?? "").toString()
+			} });
 		};
-		$[1] = navigate;
+		$[0] = navigate;
+		$[1] = t0;
+	} else t0 = $[1];
+	const handleSubmit = t0;
+	let t1;
+	if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
+		t1 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CardPreview, {});
 		$[2] = t1;
 	} else t1 = $[2];
-	const handleSubmit = t1;
 	let t2;
 	if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
-		t2 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CardPreview, {});
-		$[3] = t2;
-	} else t2 = $[3];
-	let t3;
-	if ($[4] === Symbol.for("react.memo_cache_sentinel")) {
-		t3 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(StepFunnel, { children: [
+		t2 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(StepFunnel, { children: [
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(StepFunnel.Step, {
 				step: 4,
 				comparisonOperator: "greaterThanOrEqual",
@@ -15102,25 +15042,21 @@ var CardInfoFormSection = () => {
 				children: _temp1
 			})
 		] });
-		$[4] = t3;
-	} else t3 = $[4];
-	let t4;
-	if ($[5] !== handleSubmit) {
-		t4 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Container, {
-			onSubmit: handleSubmit,
-			children: t3
+		$[3] = t2;
+	} else t2 = $[3];
+	let t3;
+	if ($[4] !== handleSubmit) {
+		t3 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(FormWrapper, {
+			defaultValues: INITIAL_CARD_INFO_FORM_STATE,
+			children: [t1, /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Container, {
+				onSubmit: handleSubmit,
+				children: t2
+			})]
 		});
-		$[5] = handleSubmit;
-		$[6] = t4;
-	} else t4 = $[6];
-	let t5;
-	if ($[7] !== FormWrapper || $[8] !== t4) {
-		t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(FormWrapper, { children: [t2, t4] });
-		$[7] = FormWrapper;
-		$[8] = t4;
-		$[9] = t5;
-	} else t5 = $[9];
-	return t5;
+		$[4] = handleSubmit;
+		$[5] = t3;
+	} else t3 = $[5];
+	return t3;
 };
 var Container = styled.form`
   display: flex;
@@ -15221,60 +15157,55 @@ var GoHomeButton = () => {
 //#region src/pages/CardRegistrationCompletePage.tsx
 var CARD_COMPANY_LABEL_MAP = Object.fromEntries(CARD.COMPANY_SELECT_FIELD.map(({ value, label }) => [value, label]));
 var CardRegistrationCompletePage = () => {
-	const $ = (0, import_compiler_runtime.c)(12);
-	const [searchParams] = useSearchParams();
-	let cardCompany;
+	const $ = (0, import_compiler_runtime.c)(11);
+	const { state } = useLocation();
+	const cardNumber = state?.cardNumber ?? "";
+	const cardCompany = state?.cardCompany ?? "";
 	let t0;
-	if ($[0] !== searchParams) {
-		const cardNumber = searchParams.get("card-number") ?? "";
-		cardCompany = searchParams.get("card-company") ?? "";
+	if ($[0] !== cardNumber) {
 		t0 = cardNumber.slice(0, 4);
-		$[0] = searchParams;
-		$[1] = cardCompany;
-		$[2] = t0;
-	} else {
-		cardCompany = $[1];
-		t0 = $[2];
-	}
+		$[0] = cardNumber;
+		$[1] = t0;
+	} else t0 = $[1];
 	const cardNumberPrefix = t0;
 	const cardCompanyLabel = CARD_COMPANY_LABEL_MAP[cardCompany] ?? "";
 	let t1;
-	if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
+	if ($[2] === Symbol.for("react.memo_cache_sentinel")) {
 		t1 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CheckIcon, {
 			src: Check_default,
 			alt: "Check"
 		});
-		$[3] = t1;
-	} else t1 = $[3];
+		$[2] = t1;
+	} else t1 = $[2];
 	let t2;
-	if ($[4] !== cardNumberPrefix) {
+	if ($[3] !== cardNumberPrefix) {
 		t2 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Description, { children: [cardNumberPrefix, "로 시작하는"] });
-		$[4] = cardNumberPrefix;
-		$[5] = t2;
-	} else t2 = $[5];
+		$[3] = cardNumberPrefix;
+		$[4] = t2;
+	} else t2 = $[4];
 	let t3;
-	if ($[6] !== cardCompanyLabel) {
+	if ($[5] !== cardCompanyLabel) {
 		t3 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Description, { children: [cardCompanyLabel, "가 등록되었어요."] });
-		$[6] = cardCompanyLabel;
-		$[7] = t3;
-	} else t3 = $[7];
+		$[5] = cardCompanyLabel;
+		$[6] = t3;
+	} else t3 = $[6];
 	let t4;
-	if ($[8] === Symbol.for("react.memo_cache_sentinel")) {
+	if ($[7] === Symbol.for("react.memo_cache_sentinel")) {
 		t4 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(GoBackButtonContainer, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(GoHomeButton, {}) });
-		$[8] = t4;
-	} else t4 = $[8];
+		$[7] = t4;
+	} else t4 = $[7];
 	let t5;
-	if ($[9] !== t2 || $[10] !== t3) {
+	if ($[8] !== t2 || $[9] !== t3) {
 		t5 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PageWrapper, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Wrapper, { children: [
 			t1,
 			t2,
 			t3,
 			t4
 		] }) });
-		$[9] = t2;
-		$[10] = t3;
-		$[11] = t5;
-	} else t5 = $[11];
+		$[8] = t2;
+		$[9] = t3;
+		$[10] = t5;
+	} else t5 = $[10];
 	return t5;
 };
 var Wrapper = styled.div`
