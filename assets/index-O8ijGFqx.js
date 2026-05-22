@@ -13516,7 +13516,7 @@ var CARD_ERROR_CODE = {
 	INVALID_CVC: "INVALID_CVC",
 	INVALID_EXPIRATION_DATE: "INVALID_EXPIRATION_DATE"
 };
-var isCardErrorCode = (code) => typeof code === "string" && code in CARD_ERROR_CODE;
+var isCardErrorCode = (code) => typeof code === "string" && Object.hasOwn(CARD_ERROR_CODE, code);
 //#endregion
 //#region src/components/common/StepFunnel/FunnelContext.tsx
 var FunnelContext = (0, import_react.createContext)(null);
@@ -13635,49 +13635,46 @@ var StepFunnel = (t0) => {
 StepFunnel.Step = Step;
 //#endregion
 //#region src/constants/card.ts
+var COMPANY_INFO = {
+	BC: {
+		label: "BC카드",
+		issuerCode: "31"
+	},
+	SHINHAN: {
+		label: "신한카드",
+		issuerCode: "41"
+	},
+	KAKAOBANK: {
+		label: "카카오뱅크",
+		issuerCode: "15"
+	},
+	HYUNDAI: {
+		label: "현대카드",
+		issuerCode: "61"
+	},
+	WOORI: {
+		label: "우리카드",
+		issuerCode: "W1"
+	},
+	LOTTE: {
+		label: "롯데카드",
+		issuerCode: "71"
+	},
+	HANA: {
+		label: "하나카드",
+		issuerCode: "21"
+	},
+	KOOKMIN: {
+		label: "국민카드",
+		issuerCode: "11"
+	}
+};
 var CARD = {
-	COMPANY_SELECT_FIELD: [
-		{
-			value: "BC",
-			label: "BC카드",
-			issuerCode: "31"
-		},
-		{
-			value: "SHINHAN",
-			label: "신한카드",
-			issuerCode: "41"
-		},
-		{
-			value: "KAKAOBANK",
-			label: "카카오뱅크",
-			issuerCode: "15"
-		},
-		{
-			value: "HYUNDAI",
-			label: "현대카드",
-			issuerCode: "61"
-		},
-		{
-			value: "WOORI",
-			label: "우리카드",
-			issuerCode: "W1"
-		},
-		{
-			value: "LOTTE",
-			label: "롯데카드",
-			issuerCode: "71"
-		},
-		{
-			value: "HANA",
-			label: "하나카드",
-			issuerCode: "21"
-		},
-		{
-			value: "KOOKMIN",
-			label: "국민카드",
-			issuerCode: "11"
-		}
-	],
+	COMPANY_INFO,
+	COMPANY_SELECT_FIELD: Object.keys(COMPANY_INFO).map((key) => ({
+		value: key,
+		...COMPANY_INFO[key]
+	})),
 	NUMBER_LENGTH_BY_BRAND: {
 		Visa: 16,
 		MasterCard: 16,
@@ -13719,15 +13716,30 @@ var CARD = {
 //#endregion
 //#region src/hooks/common/useMutation.ts
 var useMutation = ({ mutationFn }) => {
-	const mutate = async (data, options) => {
+	const [status, setStatus] = (0, import_react.useState)("idle");
+	const [data, setData] = (0, import_react.useState)(null);
+	const [error, setError] = (0, import_react.useState)(null);
+	const mutate = async (body, options) => {
+		setStatus("loading");
+		setError(null);
 		try {
-			const response = await mutationFn(data);
-			if (options?.onSuccess) options.onSuccess(response);
-		} catch (error) {
-			if (options?.onError) options.onError(error instanceof Error ? error : new Error(String(error)));
+			const response = await mutationFn(body);
+			setStatus("success");
+			setData(response);
+			options?.onSuccess?.(response);
+		} catch (err) {
+			const error_0 = err instanceof Error ? err : new Error(String(err));
+			setStatus("error");
+			setError(error_0);
+			options?.onError?.(error_0);
 		}
 	};
-	return { mutate };
+	return {
+		mutate,
+		status,
+		data,
+		error
+	};
 };
 //#endregion
 //#region src/hooks/feature/mutation/useRegisterCard.ts
@@ -15363,18 +15375,21 @@ var CardInfoFormSection = () => {
 		t0 = (event) => {
 			event.preventDefault();
 			const cardNumber = getValue("cardNumber").join("");
-			const cardCompany = getValue("selectedCardCompany") ?? "";
+			const selectedCardCompany = getValue("selectedCardCompany");
+			if (!selectedCardCompany) return;
 			const cvc = getValue("CVC");
 			const { month, year } = getValue("validityPeriod");
+			const expirationDate = `${month}/${year}`;
+			const { issuerCode } = CARD.COMPANY_INFO[selectedCardCompany];
 			registerCard({
 				number: cardNumber,
-				expirationDate: `${month}/${year}`,
+				expirationDate,
 				cvc,
-				issuerCode: CARD.COMPANY_SELECT_FIELD.find((field) => field.value === cardCompany)?.issuerCode
+				issuerCode
 			}, {
 				onSuccess: () => navigateToCompletePage({
 					cardNumber,
-					cardCompany
+					cardCompany: selectedCardCompany
 				}),
 				onError: (error) => {
 					if (error instanceof ApiError && isCardErrorCode(error.code)) {
@@ -15883,54 +15898,76 @@ var useDeleteCard = () => {
 //#endregion
 //#region src/hooks/common/useQuery.ts
 var useQuery = (t0) => {
-	const $ = (0, import_compiler_runtime.c)(8);
+	const $ = (0, import_compiler_runtime.c)(10);
 	const { queryFn } = t0;
 	const [state, setState] = (0, import_react.useState)("idle");
 	const [data, setData] = (0, import_react.useState)(null);
 	const [error, setError] = (0, import_react.useState)(null);
+	const [fetchKey, setFetchKey] = (0, import_react.useState)(0);
 	let t1;
+	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
+		t1 = function reload() {
+			setState("loading");
+			setData(null);
+			setError(null);
+			setFetchKey(_temp$2);
+		};
+		$[0] = t1;
+	} else t1 = $[0];
+	const reload = t1;
 	let t2;
-	if ($[0] !== queryFn || $[1] !== state) {
-		t1 = () => {
-			Promise.resolve().then(() => {
-				if (state === "loading") return;
-				setState("loading");
-			});
+	if ($[1] !== queryFn) {
+		t2 = () => {
+			setState("loading");
+			let cancelled = false;
 			(async () => {
 				try {
-					setData(await queryFn());
-					setState("success");
+					const response = await queryFn();
+					if (!cancelled) {
+						setData(response);
+						setState("success");
+					}
 				} catch (t3) {
 					const err = t3;
-					setError(err instanceof Error ? err : new Error(String(err)));
-					setState("error");
+					if (!cancelled) {
+						setError(err instanceof Error ? err : new Error(String(err)));
+						setState("error");
+					}
 				}
 			})();
+			return () => {
+				cancelled = true;
+			};
 		};
-		t2 = [queryFn, state];
-		$[0] = queryFn;
-		$[1] = state;
-		$[2] = t1;
-		$[3] = t2;
-	} else {
-		t1 = $[2];
-		t2 = $[3];
-	}
-	(0, import_react.useEffect)(t1, t2);
+		$[1] = queryFn;
+		$[2] = t2;
+	} else t2 = $[2];
 	let t3;
-	if ($[4] !== data || $[5] !== error || $[6] !== state) {
-		t3 = {
+	if ($[3] !== fetchKey || $[4] !== queryFn) {
+		t3 = [queryFn, fetchKey];
+		$[3] = fetchKey;
+		$[4] = queryFn;
+		$[5] = t3;
+	} else t3 = $[5];
+	(0, import_react.useEffect)(t2, t3);
+	let t4;
+	if ($[6] !== data || $[7] !== error || $[8] !== state) {
+		t4 = {
 			state,
 			data,
-			error
+			error,
+			reload
 		};
-		$[4] = data;
-		$[5] = error;
-		$[6] = state;
-		$[7] = t3;
-	} else t3 = $[7];
-	return t3;
+		$[6] = data;
+		$[7] = error;
+		$[8] = state;
+		$[9] = t4;
+	} else t4 = $[9];
+	return t4;
 };
+function _temp$2(k) {
+	return k + 1;
+}
 //#endregion
 //#region src/hooks/feature/query/useCards.ts
 var useCards = () => {
@@ -15949,7 +15986,7 @@ var Error_default = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAA
 //#region src/components/feature/RetryButton/RetryButton.tsx
 var RetryButton = () => {
 	const $ = (0, import_compiler_runtime.c)(1);
-	const handleClick = _temp$2;
+	const handleClick = _temp$1;
 	let t0;
 	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
 		t0 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
@@ -15962,7 +15999,7 @@ var RetryButton = () => {
 	} else t0 = $[0];
 	return t0;
 };
-function _temp$2() {
+function _temp$1() {
 	window.location.reload();
 }
 //#endregion
@@ -16031,7 +16068,7 @@ var MyCardListSectionLoader = () => {
 	} else t0 = $[0];
 	let t1;
 	if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
-		t1 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Wrapper$1, { children: [t0, /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CardContainer$1, { children: Array.from({ length: SKELETON_ITEM_COUNT }).map(_temp$1) })] });
+		t1 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Wrapper$1, { children: [t0, /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CardContainer$1, { children: Array.from({ length: SKELETON_ITEM_COUNT }).map(_temp) })] });
 		$[1] = t1;
 	} else t1 = $[1];
 	return t1;
@@ -16100,7 +16137,7 @@ var SkeletonLine = styled.div`
   border-radius: 4px;
   ${skeletonBackground}
 `;
-function _temp$1(_, index) {
+function _temp(_, index) {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(SkeletonCardItem, { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(SkeletonMiniCard, {}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(SkeletonInfo, { children: [
 		/* @__PURE__ */ (0, import_jsx_runtime.jsx)(SkeletonLine, {
 			width: "40%",
@@ -16119,8 +16156,8 @@ function _temp$1(_, index) {
 //#endregion
 //#region src/components/feature/MyCardListSection/MyCardListSection.tsx
 var MyCardListSection = () => {
-	const $ = (0, import_compiler_runtime.c)(13);
-	const { data, state } = useCards();
+	const $ = (0, import_compiler_runtime.c)(14);
+	const { data: cards, state, reload } = useCards();
 	const { mutate: deleteCard } = useDeleteCard();
 	if (state === "loading" || state === "idle") {
 		let t0;
@@ -16130,7 +16167,7 @@ var MyCardListSection = () => {
 		} else t0 = $[0];
 		return t0;
 	}
-	if (state === "error" || !data) {
+	if (state === "error" || !cards) {
 		let t0;
 		if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
 			t0 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(MyCardListSectionErrorFallback, {});
@@ -16139,53 +16176,54 @@ var MyCardListSection = () => {
 		return t0;
 	}
 	let t0;
-	if ($[2] !== data.length) {
+	if ($[2] !== cards.length) {
 		t0 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Header, { children: [
 			"보유 카드 (",
-			data.length,
+			cards.length,
 			")"
 		] });
-		$[2] = data.length;
+		$[2] = cards.length;
 		$[3] = t0;
 	} else t0 = $[3];
 	let t1;
-	if ($[4] !== data || $[5] !== deleteCard) {
-		t1 = data.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CardContainer, { children: data.map((props) => /* @__PURE__ */ (0, import_react.createElement)(CardItem, {
+	if ($[4] !== cards || $[5] !== deleteCard || $[6] !== reload) {
+		t1 = cards.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(CardContainer, { children: cards.map((props) => /* @__PURE__ */ (0, import_react.createElement)(CardItem, {
 			...props,
 			key: props.id,
 			onClickDelete: (t2) => {
 				const { number } = t2;
 				if (!window.confirm(`${number} 카드를 삭제하시겠습니까?`)) return;
-				deleteCard(props.id, { onSuccess: _temp });
+				deleteCard(props.id, { onSuccess: () => reload() });
 			}
 		})) }), /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AddCardNavigateButton, { buttonType: "dashed" })] });
-		$[4] = data;
+		$[4] = cards;
 		$[5] = deleteCard;
-		$[6] = t1;
-	} else t1 = $[6];
+		$[6] = reload;
+		$[7] = t1;
+	} else t1 = $[7];
 	let t2;
-	if ($[7] !== data.length) {
-		t2 = data.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(EmptyStateContainer, { children: [
+	if ($[8] !== cards.length) {
+		t2 = cards.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(EmptyStateContainer, { children: [
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(EmptyCard, {}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(EmptyStateHeading, { children: "등록된 카드가 없습니다." }),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(EmptyStateText, { children: "아래 버튼을 눌러 첫 카드를 등록해보세요" }),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(AddCardNavigateButton, {})
 		] });
-		$[7] = data.length;
-		$[8] = t2;
-	} else t2 = $[8];
+		$[8] = cards.length;
+		$[9] = t2;
+	} else t2 = $[9];
 	let t3;
-	if ($[9] !== t0 || $[10] !== t1 || $[11] !== t2) {
+	if ($[10] !== t0 || $[11] !== t1 || $[12] !== t2) {
 		t3 = /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(Wrapper, { children: [
 			t0,
 			t1,
 			t2
 		] });
-		$[9] = t0;
-		$[10] = t1;
-		$[11] = t2;
-		$[12] = t3;
-	} else t3 = $[12];
+		$[10] = t0;
+		$[11] = t1;
+		$[12] = t2;
+		$[13] = t3;
+	} else t3 = $[13];
 	return t3;
 };
 var Wrapper = styled.section`
@@ -16219,13 +16257,10 @@ var EmptyCard = styled.div`
   border-radius: 5px;
   border-width: 1px;
   border-style: dashed;
-  dashes: 6, 4;
-  angle: 0 deg;
   opacity: 1;
 `;
 var EmptyStateHeading = styled.p`
   font-weight: 700;
-  font-style: Bold;
   font-size: 20px;
   margin: 0;
 `;
@@ -16234,9 +16269,6 @@ var EmptyStateText = styled.p`
   font-size: 12px;
   margin: 0;
 `;
-function _temp() {
-	return window.location.reload();
-}
 //#endregion
 //#region src/pages/CardsPage.tsx
 var CardsPage = () => {
@@ -16296,7 +16328,13 @@ var App = () => {
 };
 //#endregion
 //#region src/main.tsx
-async function enableMocking() {}
+async function enableMocking() {
+	const { worker } = await __vitePreload(async () => {
+		const { worker } = await import("./browser-CGLYnAhE.js");
+		return { worker };
+	}, []);
+	return worker.start({ onUnhandledRequest: "bypass" });
+}
 enableMocking().then(() => {
 	(0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_react.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}) }));
 });
