@@ -16334,7 +16334,10 @@ async function enableMocking() {
 		const { worker } = await import("./browser-CBXPj7BA.js");
 		return { worker };
 	}, []);
-	return worker.start({ onUnhandledRequest: "bypass" });
+	return worker.start({
+		onUnhandledRequest: "bypass",
+		serviceWorker: { url: `/react-payments/mockServiceWorker.js` }
+	});
 }
 enableMocking().catch((e) => console.error("MSW 초기화 실패:", e)).finally(() => {
 	(0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_react.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}) }));
