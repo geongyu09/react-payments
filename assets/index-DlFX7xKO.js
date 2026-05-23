@@ -13504,7 +13504,7 @@ var fetcher = {
 };
 //#endregion
 //#region src/apis/api/cards/router.ts
-var API_URL = "/api/cards";
+var API_URL = `/react-payments/api/cards`;
 var getCards = async () => {
 	return fetcher.get(API_URL);
 };
@@ -15880,7 +15880,7 @@ var AddCardNavigateButton = (t0) => {
 };
 //#endregion
 //#region src/apis/api/cards/[id]/router.ts
-var getApiUrl = (id) => `/api/cards/${id}`;
+var getApiUrl = (id) => `/react-payments/api/cards/${id}`;
 var deleteCard = async (id) => {
 	return fetcher.delete(getApiUrl(id));
 };
