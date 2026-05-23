@@ -15903,14 +15903,11 @@ var useQuery = (t0) => {
 	const [state, setState] = (0, import_react.useState)("idle");
 	const [data, setData] = (0, import_react.useState)(null);
 	const [error, setError] = (0, import_react.useState)(null);
-	const [fetchKey, setFetchKey] = (0, import_react.useState)(0);
+	const [fetchTrigger, setFetchTrigger] = (0, import_react.useState)(0);
 	let t1;
 	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-		t1 = function reload() {
-			setState("loading");
-			setData(null);
-			setError(null);
-			setFetchKey(_temp$2);
+		t1 = () => {
+			setFetchTrigger(_temp$2);
 		};
 		$[0] = t1;
 	} else t1 = $[0];
@@ -15918,9 +15915,13 @@ var useQuery = (t0) => {
 	let t2;
 	if ($[1] !== queryFn) {
 		t2 = () => {
-			setState("loading");
 			let cancelled = false;
-			(async () => {
+			Promise.resolve().then(async () => {
+				if (!cancelled) {
+					setState("loading");
+					setData(null);
+					setError(null);
+				}
 				try {
 					const response = await queryFn();
 					if (!cancelled) {
@@ -15934,7 +15935,7 @@ var useQuery = (t0) => {
 						setState("error");
 					}
 				}
-			})();
+			});
 			return () => {
 				cancelled = true;
 			};
@@ -15943,9 +15944,9 @@ var useQuery = (t0) => {
 		$[2] = t2;
 	} else t2 = $[2];
 	let t3;
-	if ($[3] !== fetchKey || $[4] !== queryFn) {
-		t3 = [queryFn, fetchKey];
-		$[3] = fetchKey;
+	if ($[3] !== fetchTrigger || $[4] !== queryFn) {
+		t3 = [queryFn, fetchTrigger];
+		$[3] = fetchTrigger;
 		$[4] = queryFn;
 		$[5] = t3;
 	} else t3 = $[5];
@@ -15965,8 +15966,8 @@ var useQuery = (t0) => {
 	} else t4 = $[9];
 	return t4;
 };
-function _temp$2(k) {
-	return k + 1;
+function _temp$2(prev) {
+	return prev + 1;
 }
 //#endregion
 //#region src/hooks/feature/query/useCards.ts
@@ -16330,12 +16331,12 @@ var App = () => {
 //#region src/main.tsx
 async function enableMocking() {
 	const { worker } = await __vitePreload(async () => {
-		const { worker } = await import("./browser-CGLYnAhE.js");
+		const { worker } = await import("./browser-CBXPj7BA.js");
 		return { worker };
 	}, []);
 	return worker.start({ onUnhandledRequest: "bypass" });
 }
-enableMocking().then(() => {
+enableMocking().catch((e) => console.error("MSW 초기화 실패:", e)).finally(() => {
 	(0, import_client.createRoot)(document.getElementById("root")).render(/* @__PURE__ */ (0, import_jsx_runtime.jsx)(import_react.StrictMode, { children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(App, {}) }));
 });
 //#endregion

@@ -20142,6 +20142,7 @@ var http = {
 //#endregion
 //#region src/mock/_handlers/cards/utils.ts
 var isValidBin = (number) => {
+	if (!/^\d+$/.test(number)) return false;
 	const bin2 = parseInt(number.slice(0, 2), 10);
 	const bin3 = parseInt(number.slice(0, 3), 10);
 	const bin4 = parseInt(number.slice(0, 4), 10);
