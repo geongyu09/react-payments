@@ -20140,6 +20140,37 @@ var http = {
 	options: createHttpHandler(HttpMethods.OPTIONS)
 };
 //#endregion
+//#region src/mock/_handlers/cards/store.ts
+var maskCardNumber = (number) => `${number.slice(0, 6)}******${number.slice(-4)}`;
+var cards = [{
+	id: "550e8400-e29b-41d4-a716-446655440000",
+	issuerCode: "31",
+	number: maskCardNumber("5511123456789012"),
+	expirationDate: "12/28"
+}, {
+	id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+	issuerCode: "41",
+	number: maskCardNumber("4111111111111111"),
+	expirationDate: "12/28"
+}];
+var cardStore = {
+	getAll: () => [...cards],
+	add: (card) => {
+		const newCard = {
+			id: card.id,
+			issuerCode: card.issuerCode,
+			number: maskCardNumber(card.rawNumber),
+			expirationDate: card.expirationDate
+		};
+		cards.push(newCard);
+		return newCard;
+	},
+	remove: (id) => {
+		const index = cards.findIndex((c) => c.id === id);
+		if (index !== -1) cards.splice(index, 1);
+	}
+};
+//#endregion
 //#region src/mock/_handlers/cards/utils.ts
 var isValidBin = (number) => {
 	if (!/^\d+$/.test(number)) return false;
@@ -20169,17 +20200,7 @@ var isValidExpirationDate = (expirationDate) => {
 //#region src/mock/_handlers/cards/handlers.ts
 var ENDPOINT$1 = "api/cards";
 var handlers$1 = [http.get(ENDPOINT$1, () => {
-	return HttpResponse.json([{
-		id: "550e8400-e29b-41d4-a716-446655440000",
-		issuerCode: "31",
-		number: "551112******9012",
-		expirationDate: "12/28"
-	}, {
-		id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-		issuerCode: "41",
-		number: "551112******9012",
-		expirationDate: "12/28"
-	}], { status: 200 });
+	return HttpResponse.json(cardStore.getAll(), { status: 200 });
 }), http.post(ENDPOINT$1, async ({ request }) => {
 	const body = await request.json();
 	if (!isValidBin(body.number)) return HttpResponse.json({
@@ -20195,9 +20216,16 @@ var handlers$1 = [http.get(ENDPOINT$1, () => {
 		message: "유효하지 않은 만료일입니다."
 	}, { status: 400 });
 	const id = crypto.randomUUID();
+	cardStore.add({
+		id,
+		issuerCode: body.issuerCode,
+		rawNumber: body.number,
+		expirationDate: body.expirationDate
+	});
 	return HttpResponse.json({ id }, { status: 201 });
 })];
-var handlers = [http.delete("api/cards/:id", () => {
+var handlers = [http.delete("api/cards/:id", ({ params }) => {
+	cardStore.remove(params.id);
 	return new HttpResponse(null, { status: 204 });
 })];
 //#endregion

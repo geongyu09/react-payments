@@ -13634,6 +13634,77 @@ var StepFunnel = (t0) => {
 };
 StepFunnel.Step = Step;
 //#endregion
+//#region src/hooks/common/useMutation.ts
+var useMutation = ({ mutationFn }) => {
+	const [status, setStatus] = (0, import_react.useState)("idle");
+	const [data, setData] = (0, import_react.useState)(null);
+	const [error, setError] = (0, import_react.useState)(null);
+	const mutate = async (body, options) => {
+		setStatus("loading");
+		setError(null);
+		try {
+			const response = await mutationFn(body);
+			setStatus("success");
+			setData(response);
+			options?.onSuccess?.(response);
+		} catch (err) {
+			const error_0 = err instanceof Error ? err : new Error(String(err));
+			setStatus("error");
+			setError(error_0);
+			options?.onError?.(error_0);
+		}
+	};
+	return {
+		mutate,
+		status,
+		data,
+		error
+	};
+};
+//#endregion
+//#region src/hooks/feature/mutation/useRegisterCard.ts
+var useRegisterCard = () => {
+	const $ = (0, import_compiler_runtime.c)(1);
+	let t0;
+	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
+		t0 = { mutationFn: registerCard };
+		$[0] = t0;
+	} else t0 = $[0];
+	return useMutation(t0);
+};
+//#endregion
+//#region src/hooks/feature/navigation/useNavigateCompletePage.ts
+var useCompletePageState = () => {
+	const $ = (0, import_compiler_runtime.c)(3);
+	const { state } = useLocation();
+	const t0 = state?.cardNumber ?? "";
+	const t1 = state?.cardCompany ?? "";
+	let t2;
+	if ($[0] !== t0 || $[1] !== t1) {
+		t2 = {
+			cardNumber: t0,
+			cardCompany: t1
+		};
+		$[0] = t0;
+		$[1] = t1;
+		$[2] = t2;
+	} else t2 = $[2];
+	return t2;
+};
+var useNavigateCompletePage = () => {
+	const $ = (0, import_compiler_runtime.c)(2);
+	const navigate = useNavigate();
+	let t0;
+	if ($[0] !== navigate) {
+		t0 = (state) => {
+			navigate("/complete", { state });
+		};
+		$[0] = navigate;
+		$[1] = t0;
+	} else t0 = $[1];
+	return t0;
+};
+//#endregion
 //#region src/constants/card.ts
 var COMPANY_INFO = {
 	BC: {
@@ -13714,58 +13785,66 @@ var CARD = {
 	}
 };
 //#endregion
-//#region src/hooks/common/useMutation.ts
-var useMutation = ({ mutationFn }) => {
-	const [status, setStatus] = (0, import_react.useState)("idle");
-	const [data, setData] = (0, import_react.useState)(null);
-	const [error, setError] = (0, import_react.useState)(null);
-	const mutate = async (body, options) => {
-		setStatus("loading");
-		setError(null);
-		try {
-			const response = await mutationFn(body);
-			setStatus("success");
-			setData(response);
-			options?.onSuccess?.(response);
-		} catch (err) {
-			const error_0 = err instanceof Error ? err : new Error(String(err));
-			setStatus("error");
-			setError(error_0);
-			options?.onError?.(error_0);
-		}
-	};
-	return {
-		mutate,
-		status,
-		data,
-		error
-	};
+//#region src/utils/card.ts
+var detectCardBrand = (cardNumber) => {
+	const VISA_PREFIX = "4";
+	const MASTER_CARD_PREFIXES = [
+		"51",
+		"52",
+		"53",
+		"54",
+		"55"
+	];
+	const DINERS_PREFIXES = ["36"];
+	const AMEX_PREFIXES = ["34", "37"];
+	if (cardNumber.startsWith(VISA_PREFIX)) return "Visa";
+	if (MASTER_CARD_PREFIXES.includes(cardNumber.slice(0, 2)) && cardNumber.length <= getCardNumberLengthByBrand("MasterCard")) return "MasterCard";
+	if (DINERS_PREFIXES.includes(cardNumber.slice(0, 2)) && cardNumber.length <= getCardNumberLengthByBrand("Diners")) return "Diners";
+	if (AMEX_PREFIXES.includes(cardNumber.slice(0, 2)) && cardNumber.length <= getCardNumberLengthByBrand("AMEX")) return "AMEX";
+	if ((parseInt(cardNumber.slice(0, 6)) >= 622126 && parseInt(cardNumber.slice(0, 6)) <= 622925 || parseInt(cardNumber.slice(0, 3)) >= 624 && parseInt(cardNumber.slice(0, 3)) <= 626 || parseInt(cardNumber.slice(0, 4)) >= 6282 && parseInt(cardNumber.slice(0, 4)) <= 6288) && cardNumber.length <= getCardNumberLengthByBrand("UnionPay")) return "UnionPay";
+	return null;
 };
-//#endregion
-//#region src/hooks/feature/mutation/useRegisterCard.ts
-var useRegisterCard = () => {
-	const $ = (0, import_compiler_runtime.c)(1);
-	let t0;
-	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
-		t0 = { mutationFn: registerCard };
-		$[0] = t0;
-	} else t0 = $[0];
-	return useMutation(t0);
+var getCardNumberLengthByBrand = (brand) => {
+	return brand ? CARD.NUMBER_LENGTH_BY_BRAND[brand] : 16;
 };
-//#endregion
-//#region src/hooks/feature/navigation/useNavigateCompletePage.ts
-var useNavigateCompletePage = () => {
-	const $ = (0, import_compiler_runtime.c)(2);
-	const navigate = useNavigate();
-	let t0;
-	if ($[0] !== navigate) {
-		t0 = (state) => {
-			navigate("/complete", { state });
-		};
-		$[0] = navigate;
-		$[1] = t0;
-	} else t0 = $[1];
-	return t0;
+var getFormattedValidityPeriodUnit = (validityPeriod) => {
+	const { month, year } = validityPeriod;
+	return `${month ? month + "/" : ""}${year ? year : ""}`;
+};
+var getCardNumberUnitMaxLengthByBrand = (brand, unitIndex) => {
+	if (!brand) return CARD.UNIT_LENGTHS_BY_BRAND.Visa[unitIndex];
+	return CARD.UNIT_LENGTHS_BY_BRAND[brand][unitIndex];
+};
+var formatCardNumberUnitByBrand = (cardNumberUnit, brand) => {
+	if (brand === "AMEX") return [
+		cardNumberUnit.slice(0, CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0], CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[1]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[1], CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[1] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[2])
+	];
+	if (brand === "Diners") return [
+		cardNumberUnit.slice(0, CARD.UNIT_LENGTHS_BY_BRAND.Diners[0]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Diners[0], CARD.UNIT_LENGTHS_BY_BRAND.Diners[0] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[1]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Diners[0] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[1], CARD.UNIT_LENGTHS_BY_BRAND.Diners[0] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[1] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[2])
+	];
+	return [
+		cardNumberUnit.slice(0, CARD.UNIT_LENGTHS_BY_BRAND.Visa[0]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Visa[0], CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1], CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[2]),
+		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[2], CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[2] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[3])
+	];
+};
+var padValidityPeriodUnit = (value) => {
+	if (value.length === 1) return `0${value}`;
+	return value;
+};
+var toApiCardNumber = (units) => {
+	return units.join("");
+};
+var toApiExpirationDate = (period) => {
+	return `${period.month}/${period.year}`;
+};
+var getIssuerCode = (companyKey) => {
+	return CARD.COMPANY_INFO[companyKey].issuerCode;
 };
 //#endregion
 //#region src/styles/colorPalette.ts
@@ -14656,59 +14735,6 @@ function _temp3$1(el_2) {
 	return el_2 === document.activeElement;
 }
 //#endregion
-//#region src/utils/card.ts
-var detectCardBrand = (cardNumber) => {
-	const VISA_PREFIX = "4";
-	const MASTER_CARD_PREFIXES = [
-		"51",
-		"52",
-		"53",
-		"54",
-		"55"
-	];
-	const DINERS_PREFIXES = ["36"];
-	const AMEX_PREFIXES = ["34", "37"];
-	if (cardNumber.startsWith(VISA_PREFIX)) return "Visa";
-	if (MASTER_CARD_PREFIXES.includes(cardNumber.slice(0, 2)) && cardNumber.length <= getCardNumberLengthByBrand("MasterCard")) return "MasterCard";
-	if (DINERS_PREFIXES.includes(cardNumber.slice(0, 2)) && cardNumber.length <= getCardNumberLengthByBrand("Diners")) return "Diners";
-	if (AMEX_PREFIXES.includes(cardNumber.slice(0, 2)) && cardNumber.length <= getCardNumberLengthByBrand("AMEX")) return "AMEX";
-	if ((parseInt(cardNumber.slice(0, 6)) >= 622126 && parseInt(cardNumber.slice(0, 6)) <= 622925 || parseInt(cardNumber.slice(0, 3)) >= 624 && parseInt(cardNumber.slice(0, 3)) <= 626 || parseInt(cardNumber.slice(0, 4)) >= 6282 && parseInt(cardNumber.slice(0, 4)) <= 6288) && cardNumber.length <= getCardNumberLengthByBrand("UnionPay")) return "UnionPay";
-	return null;
-};
-var getCardNumberLengthByBrand = (brand) => {
-	return brand ? CARD.NUMBER_LENGTH_BY_BRAND[brand] : 16;
-};
-var getFormattedValidityPeriodUnit = (validityPeriod) => {
-	const { month, year } = validityPeriod;
-	return `${month ? month + "/" : ""}${year ? year : ""}`;
-};
-var getCardNumberUnitMaxLengthByBrand = (brand, unitIndex) => {
-	if (!brand) return CARD.UNIT_LENGTHS_BY_BRAND.Visa[unitIndex];
-	return CARD.UNIT_LENGTHS_BY_BRAND[brand][unitIndex];
-};
-var formatCardNumberUnitByBrand = (cardNumberUnit, brand) => {
-	if (brand === "AMEX") return [
-		cardNumberUnit.slice(0, CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0], CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[1]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[1], CARD.UNIT_LENGTHS_BY_BRAND.AMEX[0] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[1] + CARD.UNIT_LENGTHS_BY_BRAND.AMEX[2])
-	];
-	if (brand === "Diners") return [
-		cardNumberUnit.slice(0, CARD.UNIT_LENGTHS_BY_BRAND.Diners[0]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Diners[0], CARD.UNIT_LENGTHS_BY_BRAND.Diners[0] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[1]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Diners[0] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[1], CARD.UNIT_LENGTHS_BY_BRAND.Diners[0] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[1] + CARD.UNIT_LENGTHS_BY_BRAND.Diners[2])
-	];
-	return [
-		cardNumberUnit.slice(0, CARD.UNIT_LENGTHS_BY_BRAND.Visa[0]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Visa[0], CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1], CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[2]),
-		cardNumberUnit.slice(CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[2], CARD.UNIT_LENGTHS_BY_BRAND.Visa[0] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[1] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[2] + CARD.UNIT_LENGTHS_BY_BRAND.Visa[3])
-	];
-};
-var padValidityPeriodUnit = (value) => {
-	if (value.length === 1) return `0${value}`;
-	return value;
-};
-//#endregion
 //#region src/components/feature/CardInfoFormSection/components/CardNumberInputField/errorMessage.ts
 var ERROR_MESSAGE$1 = {
 	DEFAULT: "",
@@ -15363,6 +15389,20 @@ var INITIAL_CARD_INFO_FORM_STATE = {
 	CVCStatus: "DEFAULT",
 	passwordStatus: "DEFAULT"
 };
+var ERROR_FORM_STATE_MAP = {
+	INVALID_CARD_NUMBER: { cardNumberStatus: [
+		"INVALID_BRAND",
+		"INVALID_BRAND",
+		"INVALID_BRAND",
+		"INVALID_BRAND"
+	] },
+	INVALID_CVC: { CVCStatus: "ERROR" },
+	INVALID_EXPIRATION_DATE: { validityPeriodStatus: {
+		month: "MONTH_RANGE_ERROR",
+		year: "YEAR_RANGE_ERROR"
+	} }
+};
+var getFormStateByErrorCode = (code) => ERROR_FORM_STATE_MAP[code];
 //#endregion
 //#region src/components/feature/CardInfoFormSection/CardInfoFormSection.tsx
 var CardInfoFormSection = () => {
@@ -15374,18 +15414,14 @@ var CardInfoFormSection = () => {
 	if ($[0] !== getValue || $[1] !== navigateToCompletePage || $[2] !== registerCard || $[3] !== setValue) {
 		t0 = (event) => {
 			event.preventDefault();
-			const cardNumber = getValue("cardNumber").join("");
 			const selectedCardCompany = getValue("selectedCardCompany");
 			if (!selectedCardCompany) return;
-			const cvc = getValue("CVC");
-			const { month, year } = getValue("validityPeriod");
-			const expirationDate = `${month}/${year}`;
-			const { issuerCode } = CARD.COMPANY_INFO[selectedCardCompany];
+			const cardNumber = toApiCardNumber(getValue("cardNumber"));
 			registerCard({
 				number: cardNumber,
-				expirationDate,
-				cvc,
-				issuerCode
+				expirationDate: toApiExpirationDate(getValue("validityPeriod")),
+				cvc: getValue("CVC"),
+				issuerCode: getIssuerCode(selectedCardCompany)
 			}, {
 				onSuccess: () => navigateToCompletePage({
 					cardNumber,
@@ -15393,18 +15429,10 @@ var CardInfoFormSection = () => {
 				}),
 				onError: (error) => {
 					if (error instanceof ApiError && isCardErrorCode(error.code)) {
-						const { code } = error;
-						if (code === "INVALID_CARD_NUMBER") setValue("cardNumberStatus", [
-							"INVALID_BRAND",
-							"INVALID_BRAND",
-							"INVALID_BRAND",
-							"INVALID_BRAND"
-						]);
-						if (code === "INVALID_CVC") setValue("CVCStatus", "ERROR");
-						if (code === "INVALID_EXPIRATION_DATE") setValue("validityPeriodStatus", {
-							month: "MONTH_RANGE_ERROR",
-							year: "YEAR_RANGE_ERROR"
-						});
+						const patch = getFormStateByErrorCode(error.code);
+						if ("cardNumberStatus" in patch && patch.cardNumberStatus) setValue("cardNumberStatus", patch.cardNumberStatus);
+						if ("CVCStatus" in patch && patch.CVCStatus) setValue("CVCStatus", patch.CVCStatus);
+						if ("validityPeriodStatus" in patch && patch.validityPeriodStatus) setValue("validityPeriodStatus", patch.validityPeriodStatus);
 					}
 				}
 			});
@@ -15543,22 +15571,34 @@ var AddNewCardPage = () => {
 //#region src/assets/Check.png
 var Check_default = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJgAAACYCAYAAAAYwiAhAAAACXBIWXMAABYlAAAWJQFJUiTwAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAADG1JREFUeAHtnT1wE9sVx48lG2iYKBQQ28UTDZOGQSB7hi6ioYLBdGEoMA2QKnw1qWxXSQFD6IAGUzCUMTP0KBXO2LLFDEWGJktju4HoYYoX25Jz/vJdv5W8K+1qv+7unt+MkCzJgLU/n3PuuXfvDlHGOX/+fHF7e7u0u7tbyOVyZ3DPTxf5VlCPaWhoqGj3vfy6oV431FMGP/7SarUa/HfV+XFjaWmpThlmiDLE5ORkqdlsVvjAn+EvS6REovCBZHUW8iPEW15erlJGSLVgExMTFY4mJRbqCu0JFYVMbmjQnnBv8/l8Nc1RLlWCVSqVwo8fPyDSFT5406SPUP0w+Fbl29tarbZAKSIVgiFSUfKkcgLRbYGj7qs0pNLECoZo9f379z/zgbhLyZfKCYN/aeYOHTpUXVxcNCiBJE4wRCv+0G/wwylKr1h2zI+MjMwlTbTECKbEmuGHFco2VY7ac0lJn9oLJmI5UuWIdlP3iKatYKoB+pJErH5onTq1E8xSvM+S4BqO8rPc83tar9cbpBFaCVYul1G4P6G9Drvgnfaoc2VlZZ40QQvBELU2NzeRDqdICAJt0maeYgZRa2tr6z3tTeUIwVDidDk1Ojr68/r6eqzTULEJhqh17Nixv3Kt9Xf+8ggJQVPgz3ZqfHy8cPz48X9tbGz8QjEQS4pUI0RErSIJUWBwyrwQR8rMUcRwSrzBcq2SyBUl+IVePXfu3DRFTKQpkn/AGUmJsXEEKZPrMuK67J8UEZGkSNXbesI/4DQJOjBfq9VuUgSELphao/We+zMyStSLOtdlV8Ouy0IVTIp57Qm9+A9NMJErMYQqWSiCiVyJIzTJAhdM5EosoUgWqGAiV+Ixms3m2SBXZATaaN3Z2fkHiVxJppjP59+XSqXAlqIHJhg3UV9KKyIVlFiyJxQQgXTyVYf+LglpoRRUx9+3YJjfUtM/QorgY1oZGxszWLKP5ANfRb4q6jFxnaXTx7JEg0eWZ/2MLAeuwTAFpEaMIld6aR9jP0X/wILx5DVOJSuSkHaKw8PDMzQgA6VIVXe9JCFLXB1kYxbPgkkzNbM0uAl70msT1nOKZLkkNWaTAvfHPGctT4KpJbfTJGSVKXXuqmtcp0h17qKspRc8zVe6jmA4nZ9ELmFvVOl61sZVBFOF/X9IEBTcgD3ppgHrKoKpwl4Q9lE7H/WlbwST6CU4wb3QC/02wusbwdyaKmQPtTFgT3oKpnZvrpAg2FNRjjjSUzA3hgrZpp8jjjWY1F6CW3rVYo4RTEaOglvUtvK22EYwiV6CRxwnwm0j2NbWVoUEwT0Fp+7+sN2TnFMlPWrI0aNHMSdMOCEDfP78uX1bW1ujuOE0ianE2e7nD6RIdeGD9yRoA8R68OABXbp0yfb1d+/e0YsXL2IXza7YP5AiexVsQvSMjY3R69evHeUCeO3Zs2ft98YJu3NgKY9dDSZbiWsChHErjvleRLsYudF9gkiHYGoxmZwlpAFe5LJ+D1JpjKDY7zi7vzuCXSEhdgaRywTpMs4o1p0muwWrkBArfuQywUgzRjpq+H3BJicnEdqKJMRGEHIBs40REwXrBPi+YBzaKiTERlByacJ+HWYVTOqvmAhaLjRf48TqkrUGk729YiCMyBW3YNQdwVTOlPZExIQhF7r6GkwdFVRNvz8XmYjoheH3qVOn9g8IPsharUZJJAy58HlgykgHVE1fH1ZfnCGNgVjXrl1r37p7PJubm+3f2jdv3mgx6euGsOS6c+eONp+B6VR7sptT5Kqu+6u6PRi6fcBOZEEuwBPfdZ74PtuuwZIul9f3xkVW5ALsVBH3ObMY05Fbt255not79OhR3BO+tmRJLkUBK6NzbJqWo0cciF5LVJzAIOD+/fukExmUq8329nYJKVLLCAZRBuXy5cvt6KcDWZUL5HK5AgTTMoL5EQxAMIw64yTLcoFWq1XKmcVYGsHaqHK5THGQdbkUv0EE+4k0ZH19nYIARb/faOiVMORCvy9hcqFVUQz0YlhBUq1WKQgwooRkUbUvwpLr9u3biZJL0a7BiqQh+FCDmgaKqn0RplwaTGB7Bh0KbSMYmJuba3/AQYA0OTMT3umeIpc9ef5AtL2QFT7gT58+tdsOQVAsFttR7MOHDxQkIpcjBQg2SxqDYh+3oNaZnz59un0fZPoVuZzRXjBgftBBtRzw90BavwdQ5OpPIgQDiDg4kEG1HCAZUuXXr19pEEQud2hd5HczOzsbWGrz074QudyTKMHAw4cPA+sHDXK6vcjlDQhmUIIIuqNt9sjcvlfk8oSBGgwbhyXqhA+zCXvx4kU6fPgw+QXC9GtfiFwD0ciPj49P84PfUcJAcf7t27dI2hci12Bg2XR+dHT0j5TQLQOiaF+IXIPDgrVT5AVK8Em3iDhIb2YE8gsiIibaESFFLt9UUeR7ukSujjx+/DjQ8yOfP3/ejmYilz84gn0ZSssF3hHFsNVkVMtyvJI1uQB7dS/HfyQ+ggGdF+RlUS5FPddsNuuUEiAXGrFBLfEJggzLhQjWaJ/ZzfXGfylFm5+gUHfbPA2TLMsFuC4eak8VYThJKQKjQBT+cZJ1udADw725dcBHShnYDCWunWayLhdgp34VzLQtbUAw7LwTJSLXHuxUO2iZglUppSBVRnWwRa4O2kFr/1pFaSv0rUSx847I1UGDC/zf4oF1PVgq0yQwz4gOq30hcnViLblyliffUooxe2RBI3LZsu9SJiKYCeYrg2xfiFz2WGv6vPmAf8MNtfjwCKUYnGcJ/C7xEbkcMZaXl/9iftG9Jv8VZQC/7QuRqydV6xcdgnFoW6CMgDOUBhFE5OpLRy3fIdjOzg7qsFSsrnCD1x1rRK6+oD3REaQ6BKvX65ArE2kSeFniI3K54kAGPHBeZJbSJDB7ZL1qMow+r1+/LnL1gd05EJyG7N6Y5q5+L7AqFqNLc3sCnACClRk6rS/TGIN/EU92P2kr2MTExCzPhoe3mZaQOtiXmysrK/Pdz9tuHcDFPvYMy0yxL/in1WpV7Z63FUwV+6meOhICZZ6dMexecNz8hAu2eRIEFzSbzTmn1xwF43Z/lbq6soLQDeYdnaIXyPX55jkShN70dGSI+sDD9vd8VyFB6ALRizPdhV7v6bsBnUQxwQnuNtzs956+gkktJjgw36v2MnG1hSaPEvqaKmSLXiNHK3k3b9rY2GiMj4+jXquQkHlQNnHX3tWctetNgFV33yAh6xjKBVe4Fkx19++RkGl4znFOueAKVynSZH19/d9jY2PYDfH3JGSReU6NnroKnvfJVwW/TIRnD8NtYW/Fs2AqPMqoMmOo1GiQRzylSBOVKnFq+HkSssBTTo1/owEY+FIyHC5nSUaVWcBQx3og+s5F9qJUKhXz+fwqZXB5dUZosFxnB0mNJr4uhoV/mHOztC5SCo6tH7nAQDWYFa7H6tLlTx/o1tdqNd+X2/YtGFhbW6ty0Y8zShJ7xRChg1cs110KgMCuF8m5Gv+h1O/Qk3awtxfLNU0BEZhg6I+xZFh8ZpCQVDDPeJUCJNAr3opkiQbtiAt+i/pufLUpnFDtCyy1LpKQBEKRC4QiGBDJEkNocoHQBAMimfaEKhcItAbrBv9xVZPJ6FIzMFr026V39e9QRJTL5Xm+u0GCDrxCW8nLwsFBCaTR6gbu+C9Ixz9+VIf+7sbGxi8UAZEJBtDxHx0d/cI/ZIVSvpu1hjRyudyflpeXfU//eCGyFGlFiv/ICb2YdyLUIt8JVfyf5YdPSQibp1EU807EEsGsqIvSYzfFIglB0l7a3r3rc9REWoPZgeU+J06ceMv1AZZgy2qMYFhASlxdXY29PRR7BLMi0cw3Bt/uxR21rMQewayoaPaKBwD/I2lneALtB5xSqEPUsqJVBLOiRpqzJM3ZnmCPLmyjFFcR3w9tBTOBaMPDwy93d3crJOyjLpk3p7bX0hbtBTOZmJio8N1M1kVLilgmiRHMJKOpEy2HBVyqJSlimSROMBOIxq2NSspHnQ3++Z5iu6QoJqbDILGCWUH65NQ5zQ+vUPJPAm5f8Q4XJUtatLIjFYJZKZfLU3yH2x8oOZFtXypcszOp0cqO1AlmZXJyssS9oQqn0isc4TBLoEt0Q+qrt1otzGDU0xCpnEi1YN0glfJBLfHBxe2Mki5sIJOhVpB+5AFKdWlpKTMrfDMlmB2IcixaAeJxNCmwCD/x10W8Zt6Tc6o18Ad/D1JaWyT+e37m76vjuZGRkfri4qJBGeb/qr+164Cx5t0AAAAASUVORK5CYII=";
 //#endregion
-//#region src/components/feature/GoCardsButton/GoCardsButton.tsx
-var GoCardsButton = () => {
+//#region src/hooks/feature/navigation/useNavigateCardsPage.ts
+var useNavigateCardsPage = () => {
 	const $ = (0, import_compiler_runtime.c)(2);
 	const navigate = useNavigate();
 	let t0;
 	if ($[0] !== navigate) {
-		const handleClick = () => {
+		t0 = () => {
 			navigate("/cards");
 		};
+		$[0] = navigate;
+		$[1] = t0;
+	} else t0 = $[1];
+	return t0;
+};
+//#endregion
+//#region src/components/feature/GoCardsButton/GoCardsButton.tsx
+var GoCardsButton = () => {
+	const $ = (0, import_compiler_runtime.c)(2);
+	const navigateToCardsPage = useNavigateCardsPage();
+	let t0;
+	if ($[0] !== navigateToCardsPage) {
 		t0 = /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Button, {
 			rounded: true,
 			fullWidth: true,
-			onClick: handleClick,
+			onClick: navigateToCardsPage,
 			children: "확인"
 		});
-		$[0] = navigate;
+		$[0] = navigateToCardsPage;
 		$[1] = t0;
 	} else t0 = $[1];
 	return t0;
@@ -15568,9 +15608,7 @@ var GoCardsButton = () => {
 var CARD_COMPANY_LABEL_MAP = Object.fromEntries(CARD.COMPANY_SELECT_FIELD.map(({ value, label }) => [value, label]));
 var CardRegistrationCompletePage = () => {
 	const $ = (0, import_compiler_runtime.c)(11);
-	const { state } = useLocation();
-	const cardNumber = state?.cardNumber ?? "";
-	const cardCompany = state?.cardCompany ?? "";
+	const { cardNumber, cardCompany } = useCompletePageState();
 	let t0;
 	if ($[0] !== cardNumber) {
 		t0 = cardNumber.slice(0, 4);
@@ -15904,6 +15942,7 @@ var useQuery = (t0) => {
 	const [data, setData] = (0, import_react.useState)(null);
 	const [error, setError] = (0, import_react.useState)(null);
 	const [fetchTrigger, setFetchTrigger] = (0, import_react.useState)(0);
+	const queryFnRef = (0, import_react.useRef)(queryFn);
 	let t1;
 	if ($[0] === Symbol.for("react.memo_cache_sentinel")) {
 		t1 = () => {
@@ -15915,6 +15954,15 @@ var useQuery = (t0) => {
 	let t2;
 	if ($[1] !== queryFn) {
 		t2 = () => {
+			queryFnRef.current = queryFn;
+		};
+		$[1] = queryFn;
+		$[2] = t2;
+	} else t2 = $[2];
+	(0, import_react.useEffect)(t2);
+	let t3;
+	if ($[3] === Symbol.for("react.memo_cache_sentinel")) {
+		t3 = () => {
 			let cancelled = false;
 			Promise.resolve().then(async () => {
 				if (!cancelled) {
@@ -15923,13 +15971,13 @@ var useQuery = (t0) => {
 					setError(null);
 				}
 				try {
-					const response = await queryFn();
+					const response = await queryFnRef.current();
 					if (!cancelled) {
 						setData(response);
 						setState("success");
 					}
-				} catch (t3) {
-					const err = t3;
+				} catch (t4) {
+					const err = t4;
 					if (!cancelled) {
 						setError(err instanceof Error ? err : new Error(String(err)));
 						setState("error");
@@ -15940,20 +15988,18 @@ var useQuery = (t0) => {
 				cancelled = true;
 			};
 		};
-		$[1] = queryFn;
-		$[2] = t2;
-	} else t2 = $[2];
-	let t3;
-	if ($[3] !== fetchTrigger || $[4] !== queryFn) {
-		t3 = [queryFn, fetchTrigger];
-		$[3] = fetchTrigger;
-		$[4] = queryFn;
-		$[5] = t3;
-	} else t3 = $[5];
-	(0, import_react.useEffect)(t2, t3);
+		$[3] = t3;
+	} else t3 = $[3];
 	let t4;
+	if ($[4] !== fetchTrigger) {
+		t4 = [fetchTrigger];
+		$[4] = fetchTrigger;
+		$[5] = t4;
+	} else t4 = $[5];
+	(0, import_react.useEffect)(t3, t4);
+	let t5;
 	if ($[6] !== data || $[7] !== error || $[8] !== state) {
-		t4 = {
+		t5 = {
 			state,
 			data,
 			error,
@@ -15962,9 +16008,9 @@ var useQuery = (t0) => {
 		$[6] = data;
 		$[7] = error;
 		$[8] = state;
-		$[9] = t4;
-	} else t4 = $[9];
-	return t4;
+		$[9] = t5;
+	} else t5 = $[9];
+	return t5;
 };
 function _temp$2(prev) {
 	return prev + 1;
@@ -16331,7 +16377,7 @@ var App = () => {
 //#region src/main.tsx
 async function enableMocking() {
 	const { worker } = await __vitePreload(async () => {
-		const { worker } = await import("./browser-CBXPj7BA.js");
+		const { worker } = await import("./browser-BYC23U8Q.js");
 		return { worker };
 	}, []);
 	return worker.start({
